@@ -26,8 +26,8 @@ async def reset_db() -> None:
     """
     try:
         logger.info("开始重置数据库...")
-        
-        # 删除现有数据库文件（如果存在）
+    
+    # 删除现有数据库文件（如果存在）
         if os.path.exists(DB_PATH):
             logger.info(f"删除现有数据库文件: {DB_PATH}")
             os.remove(DB_PATH)
@@ -40,7 +40,7 @@ async def reset_db() -> None:
         # 创建异步引擎
         logger.info("创建数据库表")
         engine = create_async_engine(f"sqlite+aiosqlite:///{DB_PATH}", echo=False)
-        
+
         # 创建所有表
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)

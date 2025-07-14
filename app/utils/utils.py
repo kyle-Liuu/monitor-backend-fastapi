@@ -16,7 +16,7 @@ from app.schemas.auth import TokenPayload
 # OAuth2密码承载令牌
 # 注意：tokenUrl必须与实际登录路径匹配，包括API前缀
 # 在Swagger UI中，这个URL是相对于docs页面的
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login/OAuth2")
 
 
 def generate_unique_id(prefix: str, length: int = 7) -> str:

@@ -12,7 +12,7 @@ from app.utils.utils import get_current_user, get_current_active_superuser
 router = APIRouter()
 
 
-@router.get("/info", response_model=UserInfo)
+@router.get("/info")
 async def get_user_info(
     current_user: User = Depends(get_current_user),
 ) -> Any:
@@ -29,16 +29,20 @@ async def get_user_info(
         buttons = ["B_CODE1"]
         
     return {
-        "userId": current_user.user_id,
-        "userName": current_user.username,
-        "roles": [current_user.role],
-        "buttons": buttons,
-        "avatar": current_user.avatar,
-        "email": current_user.email
+        "code": 200,
+        "data": {
+            "userId": current_user.user_id,
+            "userName": current_user.username,
+            "roles": [current_user.role],
+            "buttons": buttons,
+            "avatar": current_user.avatar,
+            "email": current_user.email
+        },
+        "msg": "获取用户信息成功"
     }
 
 
-@router.get("/list", response_model=UserListData)
+@router.get("/list")
 async def get_user_list(
     params: PaginatingParams = Depends(),
     db: AsyncSession = Depends(get_db),
@@ -90,8 +94,12 @@ async def get_user_list(
         ))
     
     return {
-        "records": user_items,
-        "current": params.current,
-        "size": params.size,
-        "total": total
+        "code": 200,
+        "data": {
+            "records": user_items,
+            "current": params.current,
+            "size": params.size,
+            "total": total
+        },
+        "msg": "获取用户列表成功"
     } 

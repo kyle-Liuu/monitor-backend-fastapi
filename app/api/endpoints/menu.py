@@ -140,13 +140,18 @@ async def get_menu_tree_by_role(db: AsyncSession, user_role: str) -> List[MenuIt
     root_menus = []
     for menu in filtered_menus:
         if menu.parent_id is None:
+            # 无父菜单，直接添加到根菜单
             root_menus.append(menu_dict[menu.menu_id])
         else:
             # 只有当父菜单存在于过滤后的菜单列表中才添加子菜单
-            if menu.parent_id in menu_dict:
-                parent = menu_dict.get(menu.parent_id)
-                if parent:
-                    parent.children.append(menu_dict[menu.menu_id])
+            parent = menu_dict.get(menu.parent_id)
+            if parent:
+                parent.children.append(menu_dict[menu.menu_id])
+            else:
+                # 如果父菜单不存在或没有权限访问，将此菜单作为根菜单添加（可选）
+                # root_menus.append(menu_dict[menu.menu_id])
+                # 或者记录日志但不添加
+                print(f"警告: 菜单 {menu.name} (ID: {menu.menu_id}) 的父菜单 ID:{menu.parent_id} 不在可访问列表中")
     
     return root_menus
 
@@ -164,7 +169,7 @@ async def get_menu_list(
         menu_list = await get_menu_tree_by_role(db, current_user.role)
         return {
             "code": 200,
-            "message": "获取菜单成功",
+            "msg": "获取菜单成功",
             "data": {
                 "menuList": menu_list
             }

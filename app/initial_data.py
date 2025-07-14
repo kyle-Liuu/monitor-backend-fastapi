@@ -99,7 +99,6 @@ async def create_initial_menus(db: AsyncSession) -> None:
         meta_title="menus.dashboard.title",
         meta_icon="&#xe721;",
         sort=1,
-        roles="R_SUPER,R_ADMIN",
         keep_alive=True
     )
     db.add(dashboard)
@@ -698,7 +697,6 @@ async def create_initial_menus(db: AsyncSession) -> None:
         meta_title="menus.help.title",
         meta_icon="&#xe719;",
         sort=11,
-        roles="R_SUPER,R_ADMIN",
         keep_alive=False
     )
     db.add(help_menu)

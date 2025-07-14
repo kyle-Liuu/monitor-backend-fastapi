@@ -18,28 +18,22 @@ from app.utils.utils import get_current_user, oauth2_scheme
 router = APIRouter()
 
 
-@router.post("/login")
-async def login(
+@router.post("/login/OAuth2")
+async def login_form(
     request: Request,
     db: AsyncSession = Depends(get_db),
     form_data: OAuth2PasswordRequestForm = Depends(),
-    login_data: LoginParams = None
 ) -> Dict:
     """
-    用户登录接口
-    
-    支持两种登录方式:
-    1. 通过OAuth2表单登录 (Swagger UI使用)
-    2. 通过JSON请求体登录 (前端应用使用)
+    用户表单登录接口 (Swagger UI使用)
     """
     client_ip = request.client.host if request.client else "unknown"
     
-    # 确定用户名和密码 (优先使用JSON请求体)
-    username = login_data.userName if login_data else form_data.username
-    password = login_data.password if login_data else form_data.password
+    username = form_data.username
+    password = form_data.password
     
     # 记录登录尝试
-    user_logger.info(f"用户尝试登录: {username} - 来自: {client_ip}")
+    user_logger.info(f"用户尝试表单登录: {username} - 来自: {client_ip}")
     
     # 查询用户
     query = await db.execute(User.__table__.select().where(User.username == username))
@@ -74,7 +68,67 @@ async def login(
     )
     
     # 记录成功登录
-    user_logger.info(f"用户登录成功: {username} - 角色: {user.role} - 来自: {client_ip}")
+    user_logger.info(f"用户表单登录成功: {username} - 角色: {user.role} - 来自: {client_ip}")
+    
+    # OAuth2要求返回的必须是以下格式，否则Swagger无法正确处理
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "refresh_token": refresh_token
+    }
+
+
+@router.post("/login")
+async def login_json(
+    request: Request,
+    login_data: LoginParams,
+    db: AsyncSession = Depends(get_db),
+) -> Dict:
+    """
+    用户JSON登录接口 (前端应用使用)
+    """
+    client_ip = request.client.host if request.client else "unknown"
+    
+    username = login_data.userName
+    password = login_data.password
+    
+    # 记录登录尝试
+    user_logger.info(f"用户尝试JSON登录: {username} - 来自: {client_ip}")
+    
+    # 查询用户
+    query = await db.execute(User.__table__.select().where(User.username == username))
+    user = query.fetchone()
+    
+    # 用户不存在或密码错误
+    if not user:
+        user_logger.warning(f"登录失败: 用户不存在 {username} - 来自: {client_ip}")
+        raise HTTPException(status_code=401, detail="用户名或密码错误")
+    
+    if not verify_password(password, user.hashed_password):
+        user_logger.warning(f"登录失败: 密码错误 {username} - 来自: {client_ip}")
+        raise HTTPException(status_code=401, detail="用户名或密码错误")
+    
+    # 用户未激活
+    if not user.is_active:
+        user_logger.warning(f"登录失败: 账户未激活 {username} - 来自: {client_ip}")
+        raise HTTPException(status_code=403, detail="用户未激活")
+    
+    # 生成访问令牌
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    # 添加额外信息到token
+    extra_data = {"role": user.role, "username": user.username}
+    token = create_access_token(
+        subject=user.user_id, expires_delta=access_token_expires, extra_data=extra_data
+    )
+    
+    # 生成刷新令牌
+    refresh_token_expires = timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES)
+    refresh_token = create_refresh_token(
+        subject=user.user_id, expires_delta=refresh_token_expires
+    )
+    
+    # 记录成功登录
+    user_logger.info(f"用户JSON登录成功: {username} - 角色: {user.role} - 来自: {client_ip}")
     
     # 根据角色设置按钮权限
     buttons = []
@@ -85,24 +139,15 @@ async def login(
     else:
         buttons = ["B_CODE1"]
     
-    # 返回OAuth2兼容格式 (用于Swagger UI) 和自定义格式 (用于前端应用)
-    response_data = {
-        "access_token": token,
-        "token_type": "bearer",
-        "refresh_token": refresh_token,
+    # 返回前端应用格式 - 按照前端期望的格式返回
+    return {
         "code": 200,
         "data": {
-            "userId": user.user_id,
-            "userName": user.username,
-            "roles": [user.role],
-            "buttons": buttons
-        },
-        "msg": "登录成功",
         "token": token,
         "refreshToken": refresh_token
+        },
+        "msg": "登录成功"
     }
-    
-    return response_data
 
 
 @router.post("/refresh", response_model=RefreshTokenResponse)

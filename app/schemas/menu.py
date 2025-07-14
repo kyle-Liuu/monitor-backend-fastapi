@@ -71,7 +71,7 @@ class MenuResponse(BaseModel):
     菜单响应，符合前端接口要求
     """
     code: int = 200
-    message: str = "操作成功"
+    msg: str = "操作成功"
     data: Dict[str, List[MenuItemOut]] = Field(..., alias="data")
 
     class Config:
@@ -79,7 +79,7 @@ class MenuResponse(BaseModel):
         json_schema_extra = {
             "example": {
                 "code": 200,
-                "message": "操作成功",
+                "msg": "操作成功",
                 "data": {
                     "menuList": []
                 }

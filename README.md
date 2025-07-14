@@ -146,7 +146,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 - `POST /api/auth/login`: 用户登录
 
-  - 请求参数：`{ "userName": "xxx", "password": "xxx" }`
+  - 请求参数：`{ "username": "xxx", "password": "xxx" }`
   - 响应：包含 token、refreshToken、用户信息和权限
 
 - `POST /api/auth/refresh`: 刷新令牌

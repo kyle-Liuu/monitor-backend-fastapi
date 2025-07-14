@@ -9,7 +9,7 @@ import asyncio
 
 from app.api.router import api_router
 from app.core.config import settings
-from app.db.database import init_db, get_db
+from app.db.database import init_db, get_db, close_db
 from app.utils.logger import app_logger, access_logger
 from app.utils.token_cleanup import schedule_token_cleanup
 
@@ -23,14 +23,25 @@ async def lifespan(app: FastAPI):
     
     # 启动令牌清理任务
     app_logger.debug("启动令牌清理任务...")
-    asyncio.create_task(schedule_token_cleanup(get_db))
+    cleanup_task = asyncio.create_task(schedule_token_cleanup(get_db))
     
     # 显示启动成功信息
     app_logger.info(f"API服务 {settings.PROJECT_NAME} v{settings.API_VERSION} 已成功启动")
     
     yield
     # 关闭时执行
-    app_logger.info("应用关闭")
+    app_logger.info("应用关闭，清理资源...")
+    # 取消令牌清理任务
+    cleanup_task.cancel()
+    try:
+        await cleanup_task
+    except asyncio.CancelledError:
+        app_logger.debug("令牌清理任务已取消")
+    
+    # 关闭数据库引擎
+    await close_db()
+    
+    app_logger.info("应用关闭完成")
 
 
 # 创建FastAPI应用

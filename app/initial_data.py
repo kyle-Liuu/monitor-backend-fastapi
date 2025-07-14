@@ -176,7 +176,7 @@ async def create_initial_menus(db: AsyncSession) -> None:
             menu_id=generate_unique_id("menu"),
             name="Cards",
             path="cards",
-            component="Cards",
+            component="/template/cards",
             meta_title="menus.template.cards",
             meta_icon="",
             parent_id=template_id,
@@ -187,7 +187,7 @@ async def create_initial_menus(db: AsyncSession) -> None:
             menu_id=generate_unique_id("menu"),
             name="Banners",
             path="banners",
-            component="Banners",
+            component="/template/banners",
             meta_title="menus.template.banners",
             meta_icon="",
             parent_id=template_id,
@@ -198,7 +198,7 @@ async def create_initial_menus(db: AsyncSession) -> None:
             menu_id=generate_unique_id("menu"),
             name="Charts",
             path="charts",
-            component="Charts",
+            component="/template/charts",
             meta_title="menus.template.charts",
             meta_icon="",
             parent_id=template_id,
@@ -209,7 +209,7 @@ async def create_initial_menus(db: AsyncSession) -> None:
             menu_id=generate_unique_id("menu"),
             name="Map",
             path="map",
-            component="Map",
+            component="/template/map",
             meta_title="menus.template.map",
             meta_icon="",
             parent_id=template_id,
@@ -220,7 +220,7 @@ async def create_initial_menus(db: AsyncSession) -> None:
             menu_id=generate_unique_id("menu"),
             name="Chat",
             path="chat",
-            component="Chat",
+            component="/template/chat",
             meta_title="menus.template.chat",
             meta_icon="",
             parent_id=template_id,
@@ -231,7 +231,7 @@ async def create_initial_menus(db: AsyncSession) -> None:
             menu_id=generate_unique_id("menu"),
             name="Calendar",
             path="calendar",
-            component="Calendar",
+            component="/template/calendar",
             meta_title="menus.template.calendar",
             meta_icon="",
             parent_id=template_id,
@@ -242,13 +242,14 @@ async def create_initial_menus(db: AsyncSession) -> None:
             menu_id=generate_unique_id("menu"),
             name="Pricing",
             path="pricing",
-            component="Pricing",
+            component="/template/pricing",
             meta_title="menus.template.pricing",
             meta_icon="",
             parent_id=template_id,
             sort=7,
             keep_alive=True,
-            is_hidden=False
+            is_hidden=False,
+            is_full_page=True
         )
     ]
     for menu in template_children:
@@ -368,6 +369,20 @@ async def create_initial_menus(db: AsyncSession) -> None:
             parent_id=widgets_id,
             sort=9,
             keep_alive=True
+        ),
+        Menu(
+            menu_id=generate_unique_id("menu"),
+            name="ElementUI",
+            path="/outside/iframe/elementui",
+            component="",
+            meta_title="menus.widgets.elementUI",
+            meta_icon="",
+            parent_id=widgets_id,
+            sort=10,
+            keep_alive=False,
+            is_iframe=True,
+            link="https://element-plus.org/zh-CN/component/overview.html",
+            show_badge=True
         )
     ]
     for menu in widgets_children:

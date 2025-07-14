@@ -50,4 +50,12 @@ async def init_db() -> None:
             db_logger.info("数据库表创建完成")
         except Exception as e:
             db_logger.error(f"创建数据库表时出错: {str(e)}")
-            raise 
+            raise
+
+async def close_db() -> None:
+    """
+    关闭数据库引擎
+    """
+    db_logger.info("关闭数据库引擎...")
+    await engine.dispose()
+    db_logger.info("数据库引擎已关闭") 

@@ -44,6 +44,14 @@ if "%option%"=="3" (
             echo   管理员^: admin (密码^: 123456)
             echo   普通用户^: user (密码^: 123456)
             echo.
+            echo 正在启动 MediaServer ...
+            tasklist /FI "IMAGENAME eq MediaServer.exe" | find /I "MediaServer.exe" >nul
+            if errorlevel 1 (
+                echo 未检测到 MediaServer，正在启动...
+                start "" "zlm\Release\MediaServer.exe"
+            ) else (
+                echo MediaServer 已在运行，无需重复启动。
+            )
             echo 正在启动后端服务...
             echo =============================================
             echo API文档地址^:
@@ -62,6 +70,14 @@ if "%option%"=="3" (
         exit /b 1
     )
 ) else if "%option%"=="1" (
+    echo 正在启动 MediaServer ...
+    tasklist /FI "IMAGENAME eq MediaServer.exe" | find /I "MediaServer.exe" >nul
+    if errorlevel 1 (
+        echo 未检测到 MediaServer，正在启动...
+        start "" "zlm\Release\MediaServer.exe"
+    ) else (
+        echo MediaServer 已在运行，无需重复启动。
+    )
     echo 正在启动后端服务...
     echo =============================================
     echo API文档地址^:

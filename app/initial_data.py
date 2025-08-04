@@ -1,92 +1,458 @@
-import asyncio
 import logging
 import json
+import os
+import uuid
+from datetime import datetime
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
-from app.db.database import async_session_factory, init_db
-from app.db.models import User, Menu
+from app.db.database import SessionLocal
+from app.db.models import User, VideoStream, Algorithm, Task, BlacklistedToken, Menu, ModelInstance, SystemConfig
 from app.core.security import get_password_hash
-from app.utils.utils import generate_unique_id
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-async def create_initial_users(db: AsyncSession) -> None:
+def generate_unique_id(prefix=""):
+    """生成唯一ID"""
+    unique_id = f"{prefix}{uuid.uuid4().hex[:8]}"
+    return unique_id
+
+
+def create_initial_users(db: Session) -> None:
     """
     创建初始用户
     """
     # 检查是否已存在管理员
-    result = await db.execute(select(User).where(User.username == "super"))
-    if result.scalars().first():
+    result = db.execute(select(User).where(User.username == "super")).scalars().first()
+    if result:
         logger.info("超级管理员用户已存在，跳过创建")
         return
     
     # 创建超级管理员
     super_admin = User(
-        user_id=generate_unique_id("user"),
+        id=generate_unique_id("user"),
         username="super",
         email="super@example.com",
         hashed_password=get_password_hash("123456"),
-        fullname="超级管理员",
+        full_name="超级管理员",
+        avatar="/assets/avatar/super_admin.webp",
         is_active=True,
-        is_superuser=True,
-        is_admin=False,
-        role="R_SUPER",
-        avatar="/public/assets/avatar/default.webp"
+        role="R_SUPER"
     )
     db.add(super_admin)
     
     # 创建管理员
     admin_user = User(
-        user_id=generate_unique_id("user"),
+        id=generate_unique_id("user"),
         username="admin",
         email="admin@example.com",
         hashed_password=get_password_hash("123456"),
-        fullname="管理员",
+        full_name="管理员",
+        avatar="/assets/avatar/admin.webp",
         is_active=True,
-        is_superuser=False,
-        is_admin=True,
-        role="R_ADMIN",
-        avatar="/public/assets/avatar/default.webp"
+        role="R_ADMIN"
     )
     db.add(admin_user)
     
     # 创建普通用户
     normal_user = User(
-        user_id=generate_unique_id("user"),
+        id=generate_unique_id("user"),
         username="user",
         email="user@example.com",
         hashed_password=get_password_hash("123456"),
-        fullname="普通用户",
+        full_name="普通用户",
+        avatar="/assets/avatar/user.webp",
         is_active=True,
-        is_superuser=False,
-        is_admin=False,
-        role="R_USER",
-        avatar="/public/assets/avatar/default.webp"
+        role="R_USER"
     )
     db.add(normal_user)
     
-    await db.commit()
+    db.commit()
     logger.info("初始用户创建成功")
 
 
-async def create_initial_menus(db: AsyncSession) -> None:
+def create_initial_roles(db: Session) -> None:
     """
-    创建初始菜单
+    创建初始角色数据
+    """
+    from app.db.models import Role
+    from app.utils.utils import generate_unique_id
     
-    注意：此处菜单数据与前端路由配置(monitor/src/router/routes/asyncRoutes.ts)保持同步
-    如果前端路由配置有更新，此处也需要相应更新，但不修改前端文件
+    # 检查是否已存在角色
+    result = db.execute(select(Role).limit(1)).scalars().first()
+    if result:
+        logger.info("角色数据已存在，跳过创建")
+        return
+    
+    # 创建超级管理员角色
+    super_role = Role(
+        role_id=generate_unique_id("role"),
+        role_code="R_SUPER",
+        role_name="超级管理员",
+        description="拥有系统全部权限",
+        is_enabled=True
+    )
+    db.add(super_role)
+    
+    # 创建管理员角色
+    admin_role = Role(
+        role_id=generate_unique_id("role"),
+        role_code="R_ADMIN",
+        role_name="管理员",
+        description="拥有业务管理权限",
+        is_enabled=True
+    )
+    db.add(admin_role)
+    
+    # 创建普通用户角色
+    user_role = Role(
+        role_id=generate_unique_id("role"),
+        role_code="R_USER",
+        role_name="普通用户",
+        description="基础查看权限",
+        is_enabled=True
+    )
+    db.add(user_role)
+    
+    db.commit()
+    logger.info("初始角色创建成功")
+
+
+def create_initial_organizations(db: Session) -> None:
+    """
+    创建初始组织数据
+    """
+    from app.db.models import Organization
+    from app.utils.utils import generate_unique_id
+    
+    # 检查是否已存在组织
+    result = db.execute(select(Organization).limit(1)).scalars().first()
+    if result:
+        logger.info("组织数据已存在，跳过创建")
+        return
+    
+    # 创建根组织
+    root_org = Organization(
+        org_id=generate_unique_id("org"),
+        name="总部",
+        path="/1/",
+        description="公司总部",
+        status="active",
+        sort_order=1
+    )
+    db.add(root_org)
+    
+    # 创建子组织
+    building_a = Organization(
+        org_id=generate_unique_id("org"),
+        name="A栋",
+        parent_id=root_org.org_id,
+        path=f"/1/{root_org.org_id}/",
+        description="A栋办公楼",
+        status="active",
+        sort_order=1
+    )
+    db.add(building_a)
+    
+    building_b = Organization(
+        org_id=generate_unique_id("org"),
+        name="B栋",
+        parent_id=root_org.org_id,
+        path=f"/1/{root_org.org_id}/",
+        description="B栋办公楼",
+        status="active",
+        sort_order=2
+    )
+    db.add(building_b)
+    
+    db.commit()
+    logger.info("初始组织创建成功")
+
+
+def create_initial_streams(db: Session) -> None:
+    """
+    创建初始视频流数据
+    """
+    # 检查是否已存在流
+    result = db.execute(select(VideoStream).limit(1)).scalars().first()
+    if result:
+        logger.info("视频流数据已存在，跳过创建")
+        return
+
+    # 测试视频文件路径
+    test_video_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "bus.jpg")
+    test_video_path_norm = os.path.normpath(test_video_path)
+    
+    # 创建示例视频流
+    stream1 = VideoStream(
+        stream_id=generate_unique_id("stream"),
+        name="测试视频-公交车",
+        url=test_video_path_norm,
+        description="用于算法测试的样例视频-公交车",
+        stream_type="file",
+        status="inactive",
+        frame_width=1920,
+        frame_height=1080,
+        fps=25.0,
+        consumer_count=0
+    )
+    db.add(stream1)
+    
+    # 创建RTSP测试流
+    stream2 = VideoStream(
+        stream_id=generate_unique_id("stream"),
+        name="RTSP测试流",
+        url="rtsp://192.168.1.186/live/test",
+        description="RTSP测试流，用于演示",
+        stream_type="rtsp",
+        status="inactive",
+        consumer_count=0
+    )
+    db.add(stream2)
+    
+    # 创建HTTP测试流
+    stream3 = VideoStream(
+        stream_id=generate_unique_id("stream"),
+        name="HTTP测试流",
+        url="http://localhost:8080/stream",
+        description="HTTP测试流，用于演示",
+        stream_type="http",
+        status="inactive",
+        consumer_count=0
+    )
+    db.add(stream3)
+    
+    db.commit()
+    logger.info("初始视频流数据创建成功")
+
+
+def create_initial_algorithms(db: Session) -> None:
+    """
+    创建初始算法数据
+    """
+    # 检查是否已存在算法
+    result = db.execute(select(Algorithm).limit(1)).scalars().first()
+    if result:
+        logger.info("算法数据已存在，跳过创建")
+        return
+    
+    # 创建YOLOv8检测算法
+    yolov8_config = {
+        "name": "yolov8n", 
+        "version": "1.0.0",
+        "device": "cpu",
+        "confidence_threshold": 0.5,
+        "nms_threshold": 0.4,
+        "classes": ["person", "car", "truck", "bus", "motorcycle"],
+        "model_path": "algorithms.installed.algocf6c488d.model.simple_yolo",
+        "postprocessor_path": "algorithms.installed.algocf6c488d.postprocessor.simple_postprocessor"
+    }
+    
+    algorithm1 = Algorithm(
+        algo_id=generate_unique_id("algo"),
+        name="YOLOv8目标检测",
+        description="基于YOLOv8的目标检测算法，支持多种目标识别",
+        package_name="algorithms.installed.algocf6c488d",  # 修改为实际存在的算法包
+        algorithm_type="detection",
+        version="1.0.0",
+        config=json.dumps(yolov8_config),
+        status="active",  # 改为active状态
+        model_path="algorithms/installed/algocf6c488d/model/yolov8_model/yolov8n.pt",
+        max_instances=3,
+        current_instances=0,
+        device_type="cpu"
+    )
+    db.add(algorithm1)
+    
+    # 创建人脸检测算法 - 使用相同的YOLOv8算法包但配置不同
+    face_config = {
+        "name": "face_detection",
+        "version": "1.0.0", 
+        "device": "cpu",
+        "confidence_threshold": 0.7,
+        "classes": ["person"],  # YOLOv8可以检测person类别作为人脸检测
+        "model_path": "algorithms.installed.algocf6c488d.model.simple_yolo",
+        "postprocessor_path": "algorithms.installed.algocf6c488d.postprocessor.simple_postprocessor"
+    }
+    
+    algorithm2 = Algorithm(
+        algo_id=generate_unique_id("algo"),
+        name="人脸检测",
+        description="专门用于人脸检测的算法",
+        package_name="algorithms.installed.algocf6c488d",  # 修改为实际存在的算法包
+        algorithm_type="detection",
+        version="1.0.0",
+        config=json.dumps(face_config),
+        status="active",  # 改为active状态
+        max_instances=2,
+        current_instances=0,
+        device_type="cpu"
+    )
+    db.add(algorithm2)
+    
+    # 创建车辆检测算法 - 使用相同的YOLOv8算法包但配置不同
+    vehicle_config = {
+        "name": "vehicle_detection",
+        "version": "1.0.0",
+        "device": "cpu", 
+        "confidence_threshold": 0.6,
+        "classes": ["car", "truck", "bus", "motorcycle"],
+        "model_path": "algorithms.installed.algocf6c488d.model.simple_yolo",
+        "postprocessor_path": "algorithms.installed.algocf6c488d.postprocessor.simple_postprocessor"
+    }
+    
+    algorithm3 = Algorithm(
+        algo_id=generate_unique_id("algo"),
+        name="车辆检测",
+        description="专门用于车辆检测的算法",
+        package_name="algorithms.installed.algocf6c488d",  # 修改为实际存在的算法包
+        algorithm_type="detection",
+        version="1.0.0",
+        config=json.dumps(vehicle_config),
+        status="active",  # 改为active状态
+        max_instances=2,
+        current_instances=0,
+        device_type="cpu"
+    )
+    db.add(algorithm3)
+    
+    db.commit()
+    logger.info("初始算法数据创建成功")
+
+
+def create_initial_model_instances(db: Session) -> None:
+    """
+    创建初始模型实例数据
+    """
+    # 检查是否已存在模型实例
+    result = db.execute(select(ModelInstance).limit(1)).scalars().first()
+    if result:
+        logger.info("模型实例数据已存在，跳过创建")
+        return
+
+    # 获取算法ID
+    algorithms = db.execute(select(Algorithm)).scalars().all()
+    
+    for algorithm in algorithms:
+        # 为每个算法创建一个默认实例
+        instance = ModelInstance(
+            instance_id=generate_unique_id("instance"),
+            algorithm_id=algorithm.algo_id,
+            instance_name=f"{algorithm.name}_instance_1",
+            status="idle",
+            device_type=algorithm.device_type,
+            use_count=0
+        )
+        db.add(instance)
+    
+    db.commit()
+    logger.info("初始模型实例数据创建成功")
+
+
+def create_initial_system_configs(db: Session) -> None:
+    """
+    创建初始系统配置数据
+    """
+    # 检查是否已存在系统配置
+    result = db.execute(select(SystemConfig).limit(1)).scalars().first()
+    if result:
+        logger.info("系统配置数据已存在，跳过创建")
+        return
+
+    # 系统配置列表
+    system_configs = [
+        {
+            "config_key": "max_stream_consumers",
+            "config_value": "5",
+            "config_type": "int",
+            "description": "单个视频流最大消费者数量"
+        },
+        {
+            "config_key": "max_model_instances",
+            "config_value": "3",
+            "config_type": "int",
+            "description": "单个算法最大模型实例数"
+        },
+        {
+            "config_key": "frame_buffer_size",
+            "config_value": "30",
+            "config_type": "int",
+            "description": "帧缓冲区大小"
+        },
+        {
+            "config_key": "default_fps",
+            "config_value": "25.0",
+            "config_type": "float",
+            "description": "默认帧率"
+        },
+        {
+            "config_key": "enable_auto_cleanup",
+            "config_value": "true",
+            "config_type": "bool",
+            "description": "是否启用自动清理"
+        },
+        {
+            "config_key": "cleanup_interval",
+            "config_value": "3600",
+            "config_type": "int",
+            "description": "清理间隔（秒）"
+        },
+        {
+            "config_key": "max_alarm_history",
+            "config_value": "1000",
+            "config_type": "int",
+            "description": "最大告警历史记录数"
+        },
+        {
+            "config_key": "enable_event_bus",
+            "config_value": "true",
+            "config_type": "bool",
+            "description": "是否启用事件总线"
+        },
+        {
+            "config_key": "event_bus_threads",
+            "config_value": "4",
+            "config_type": "int",
+            "description": "事件总线线程数"
+        },
+        {
+            "config_key": "database_connection_pool_size",
+            "config_value": "10",
+            "config_type": "int",
+            "description": "数据库连接池大小"
+        }
+    ]
+    
+    for config in system_configs:
+        system_config = SystemConfig(
+            config_id=generate_unique_id("config"),
+            config_key=config["config_key"],
+            config_value=config["config_value"],
+            config_type=config["config_type"],
+            description=config["description"],
+            is_system=True
+        )
+        db.add(system_config)
+    
+    db.commit()
+    logger.info("初始系统配置数据创建成功")
+
+
+def create_initial_menus(db: Session) -> None:
+    """
+    创建初始菜单数据
     """
     # 检查是否已存在菜单
-    result = await db.execute(select(Menu).where(Menu.name == "Dashboard"))
-    if result.scalars().first():
+    result = db.execute(select(Menu).limit(1)).scalars().first()
+    if result:
         logger.info("菜单数据已存在，跳过创建")
         return
 
+    # 创建菜单数据
     # 基于前端 asyncRoutes.ts 创建菜单数据
     dashboard_id = generate_unique_id("menu")
     
@@ -102,7 +468,6 @@ async def create_initial_menus(db: AsyncSession) -> None:
         keep_alive=True
     )
     db.add(dashboard)
-    await db.flush()
     
     # Dashboard子菜单
     dashboard_children = [
@@ -504,7 +869,13 @@ async def create_initial_menus(db: AsyncSession) -> None:
             parent_id=system_id,
             sort=4,
             roles="R_SUPER",
-            keep_alive=True
+            keep_alive=True,
+            # 添加按钮权限列表
+            auth_list=json.dumps([
+                {"title": "添加", "authMark": "add"},
+                {"title": "编辑", "authMark": "edit"},
+                {"title": "删除", "authMark": "delete"}
+            ])
         )
     ]
     for menu in system_children:
@@ -897,25 +1268,51 @@ async def create_initial_menus(db: AsyncSession) -> None:
     for menu in repo_children:
         db.add(menu)
     
-    await db.commit()
-    logger.info("初始菜单创建成功")
+    db.commit()
+    logger.info("初始菜单数据创建成功")
 
 
-async def init() -> None:
+def init() -> None:
     """
-    初始化数据
+    初始化数据库数据
     """
-    logger.info("创建初始数据")
+    logger.info("开始初始化数据库数据...")
     
-    # 初始化数据库
-    await init_db()
-    
-    async with async_session_factory() as db:
-        await create_initial_users(db)
-        await create_initial_menus(db)
-    
-    logger.info("初始数据创建完成")
+    db = SessionLocal()
+    try:
+        # 创建初始用户
+        create_initial_users(db)
+        
+        # 创建初始角色
+        create_initial_roles(db)
+        
+        # 创建初始组织
+        create_initial_organizations(db)
+        
+        # 创建初始视频流
+        create_initial_streams(db)
+        
+        # 创建初始算法
+        create_initial_algorithms(db)
+        
+        # 创建初始模型实例
+        create_initial_model_instances(db)
+        
+        # 创建初始系统配置
+        create_initial_system_configs(db)
+        
+        # 创建初始菜单
+        create_initial_menus(db)
+        
+        logger.info("数据库初始化完成")
+        
+    except Exception as e:
+        logger.error(f"初始化数据库数据时出错: {e}")
+        db.rollback()
+        raise
+    finally:
+        db.close()
 
 
 if __name__ == "__main__":
-    asyncio.run(init())
+    init()

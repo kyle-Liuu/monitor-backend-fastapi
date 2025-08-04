@@ -1,0 +1,37 @@
+name: yolov8_detection
+ch_name: YOLOv8区域入侵
+desc: 基于YOLOv8的区域入侵检测;入侵区域为多边形，可标记多个多边形区域;画面清晰，可辨别人员特征;人员目标不小于画面大小5%;识别距离小于20m最佳（200万@6mm）;目标中心点进入入侵区域告警（默认）
+group_name: 目标检测
+model:
+  yolov8_model:
+    label:
+      class2label:
+        0: person
+        1: bicycle
+        2: car
+        3: motorcycle
+        4: airplane
+        5: bus
+        6: train
+        7: truck
+      label_map:
+        person: 人
+        bicycle: 自行车
+        car: 汽车
+        motorcycle: 摩托车
+        airplane: 飞机
+        bus: 公交车
+        train: 火车
+        truck: 卡车
+      label2color:
+        人: [0, 255, 0]
+        自行车: [0, 255, 255]
+        汽车: [255, 0, 0]
+        摩托车: [255, 0, 255]
+        飞机: [255, 255, 0]
+        公交车: [0, 0, 255]
+        火车: [128, 128, 0]
+        卡车: [128, 0, 128]
+alert_label: []
+process_time: 10
+version: custom-v1.0

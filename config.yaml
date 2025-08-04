@@ -1,0 +1,51 @@
+# 系统配置
+system:
+  log_level: INFO
+  log_dir: logs
+  temp_dir: temp_frames
+  output_dir: output
+
+# 流管理配置
+stream:
+  frame_buffer_size: 30
+  default_frame_skip: 1
+  retry_interval: 5
+  max_retries: 10
+
+# 任务管理配置
+task:
+  monitor_interval: 30
+  auto_restart: true
+
+# 算法管理配置
+algorithm:
+  model_cache_size: 5
+  gpu_memory_fraction: 0.5
+
+# 输出管理配置
+output:
+  rtmp_prefix: "rtmp://localhost/live/"
+  file_output_dir: "output/recordings"
+
+# 告警管理配置
+alarm:
+  cache_ttl: 60
+  default_confidence_threshold: 0.5
+
+# 数据库配置
+database:
+  max_connections: 5
+
+# 共享内存配置
+shared_memory:
+  num_slots: 100
+  slot_size: 8388608 # 8MB
+
+# 进程管理配置
+process:
+  monitor_interval: 10
+  restart_delay: 5
+  max_restarts: 3
+
+# 跳帧检测间隔，2表示每两帧检测一次，1表示每帧都检测
+skip_frame_interval: 2

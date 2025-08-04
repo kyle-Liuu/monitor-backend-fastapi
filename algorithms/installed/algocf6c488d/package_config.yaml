@@ -1,0 +1,34 @@
+# 算法包配置文件
+# 控制算法包的行为和版本选择
+
+# 版本选择策略
+use_base_class: false # 是否强制使用基类版本
+auto_detect: true # 是否自动检测基类可用性
+
+# 模型配置
+model_config:
+  img_size: 640 # 输入图像尺寸
+  conf_thres: 0.25 # 置信度阈值
+  iou_thres: 0.45 # IoU阈值
+  max_det: 20 # 最大检测数量
+  model_file: yolov8n.pt # 模型文件名
+  model_pool_size: 1 # 模型实例池大小，默认为1，可自定义
+
+# 后处理器配置
+postprocessor_config:
+  conf_thres: 0.25 # 置信度阈值
+  color: [0, 255, 0] # 检测框颜色 (BGR)
+
+# 算法包信息
+package_info:
+  name: YOLOv8目标检测
+  version: 1.0.0
+  description: 简化的YOLOv8目标检测算法包
+  author: AI Team
+  license: MIT
+
+# 使用说明
+usage:
+  simple_mode: true # 是否启用简化模式
+  auto_warmup: true # 是否自动预热
+  gpu_support: true # 是否支持GPU

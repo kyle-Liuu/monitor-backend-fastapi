@@ -1,0 +1,10 @@
+yolov8_model:
+  type: yolov8_detect
+  args:
+    conf_thres: 0.25
+    img_size: 640
+    iou_thres: 0.45
+    max_det: 300
+    model_file: yolov8n.pt
+  gpu: true
+  infer_time: 60

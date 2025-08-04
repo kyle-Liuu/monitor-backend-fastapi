@@ -3,7 +3,7 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Body
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 from jose import jwt, JWTError
 from pydantic import ValidationError
 
@@ -19,9 +19,9 @@ router = APIRouter()
 
 
 @router.post("/login/OAuth2")
-async def login_form(
+def login_form(
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
     form_data: OAuth2PasswordRequestForm = Depends(),
 ) -> Dict:
     """
@@ -36,8 +36,7 @@ async def login_form(
     user_logger.info(f"用户尝试表单登录: {username} - 来自: {client_ip}")
     
     # 查询用户
-    query = await db.execute(User.__table__.select().where(User.username == username))
-    user = query.fetchone()
+    user = db.query(User).filter(User.username == username).first()
     
     # 用户不存在或密码错误
     if not user:
@@ -58,13 +57,13 @@ async def login_form(
     # 添加额外信息到token
     extra_data = {"role": user.role, "username": user.username}
     token = create_access_token(
-        subject=user.user_id, expires_delta=access_token_expires, extra_data=extra_data
+        subject=user.id, expires_delta=access_token_expires, extra_data=extra_data
     )
     
     # 生成刷新令牌
     refresh_token_expires = timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES)
     refresh_token = create_refresh_token(
-        subject=user.user_id, expires_delta=refresh_token_expires
+        subject=user.id, expires_delta=refresh_token_expires
     )
     
     # 记录成功登录
@@ -79,10 +78,10 @@ async def login_form(
 
 
 @router.post("/login")
-async def login_json(
+def login_json(
     request: Request,
     login_data: LoginParams,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ) -> Dict:
     """
     用户JSON登录接口 (前端应用使用)
@@ -96,8 +95,7 @@ async def login_json(
     user_logger.info(f"用户尝试JSON登录: {username} - 来自: {client_ip}")
     
     # 查询用户
-    query = await db.execute(User.__table__.select().where(User.username == username))
-    user = query.fetchone()
+    user = db.query(User).filter(User.username == username).first()
     
     # 用户不存在或密码错误
     if not user:
@@ -118,13 +116,13 @@ async def login_json(
     # 添加额外信息到token
     extra_data = {"role": user.role, "username": user.username}
     token = create_access_token(
-        subject=user.user_id, expires_delta=access_token_expires, extra_data=extra_data
+        subject=user.id, expires_delta=access_token_expires, extra_data=extra_data
     )
     
     # 生成刷新令牌
     refresh_token_expires = timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES)
     refresh_token = create_refresh_token(
-        subject=user.user_id, expires_delta=refresh_token_expires
+        subject=user.id, expires_delta=refresh_token_expires
     )
     
     # 记录成功登录
@@ -132,9 +130,9 @@ async def login_json(
     
     # 根据角色设置按钮权限
     buttons = []
-    if user.role == "R_SUPER":
+    if user.role == "super":
         buttons = ["B_CODE1", "B_CODE2", "B_CODE3"]
-    elif user.role == "R_ADMIN":
+    elif user.role == "admin":
         buttons = ["B_CODE1", "B_CODE2"]
     else:
         buttons = ["B_CODE1"]
@@ -151,9 +149,9 @@ async def login_json(
 
 
 @router.post("/refresh", response_model=RefreshTokenResponse)
-async def refresh_token(
+def refresh_token(
     refresh_token: str = Body(..., embed=True),
-    db: AsyncSession = Depends(get_db)
+    db: Session = Depends(get_db)
 ) -> Any:
     """
     刷新令牌
@@ -173,15 +171,12 @@ async def refresh_token(
         raise HTTPException(status_code=403, detail="无效的令牌")
     
     # 检查令牌是否在黑名单中
-    query = await db.execute(
-        BlacklistedToken.__table__.select().where(BlacklistedToken.token == refresh_token)
-    )
-    if query.fetchone():
+    blacklisted = db.query(BlacklistedToken).filter(BlacklistedToken.token == refresh_token).first()
+    if blacklisted:
         raise HTTPException(status_code=403, detail="令牌已失效")
     
     # 查询用户
-    query = await db.execute(User.__table__.select().where(User.user_id == token_data.sub))
-    user = query.fetchone()
+    user = db.query(User).filter(User.id == token_data.sub).first()
     
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在")
@@ -192,19 +187,19 @@ async def refresh_token(
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     extra_data = {"role": user.role, "username": user.username}
     new_token = create_access_token(
-        subject=user.user_id, expires_delta=access_token_expires, extra_data=extra_data
+        subject=user.id, expires_delta=access_token_expires, extra_data=extra_data
     )
     
     # 生成新的刷新令牌
     refresh_token_expires = timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES)
     new_refresh_token = create_refresh_token(
-        subject=user.user_id, expires_delta=refresh_token_expires
+        subject=user.id, expires_delta=refresh_token_expires
     )
     
     # 将旧的刷新令牌加入黑名单
     db_token = BlacklistedToken(token=refresh_token)
     db.add(db_token)
-    await db.commit()
+    db.commit()
     
     user_logger.info(f"用户刷新令牌: {user.username}")
     
@@ -217,10 +212,10 @@ async def refresh_token(
 
 
 @router.post("/logout")
-async def logout(
+def logout(
     current_user: User = Depends(get_current_user),
     token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db)
+    db: Session = Depends(get_db)
 ) -> Any:
     """
     用户登出接口
@@ -229,7 +224,7 @@ async def logout(
         # 将当前令牌加入黑名单
         db_token = BlacklistedToken(token=token)
         db.add(db_token)
-        await db.commit()
+        db.commit()
         
         user_logger.info(f"用户登出: {current_user.username}")
         
@@ -239,5 +234,5 @@ async def logout(
         }
     except Exception as e:
         user_logger.error(f"用户登出失败: {current_user.username}, 错误: {str(e)}")
-        await db.rollback()
+        db.rollback()
         raise HTTPException(status_code=500, detail="登出失败，请稍后重试")

@@ -69,9 +69,18 @@ def get_user_list(
         search_filter = or_(
             User.username.ilike(f"%{params.keyword}%"),
             User.email.ilike(f"%{params.keyword}%"),
-            User.fullname.ilike(f"%{params.keyword}%"),
+            User.full_name.ilike(f"%{params.keyword}%"),
+            User.mobile.ilike(f"%{params.keyword}%")
         )
         query = query.filter(search_filter)
+    
+    # 角色过滤
+    if params.role_filter:
+        query = query.filter(User.role.ilike(f"%{params.role_filter}%"))
+    
+    # 状态过滤
+    if params.status_filter is not None:
+        query = query.filter(User.is_active == params.status_filter)
     
     # 计算总数
     total = query.count()

@@ -53,3 +53,7 @@ htmlcov/
 .DS_Store
 
 zlm/**
+**.pid
+*/**/**.zip
+
+

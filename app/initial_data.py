@@ -517,7 +517,8 @@ def create_initial_menus(db: Session) -> None:
         meta_title="menus.monitor.title",
         meta_icon="&#xe8ba;",
         sort=2,
-        keep_alive=True
+        keep_alive=True,
+        is_full_page=True
     )
     db.add(monitor_menu)
     
@@ -800,6 +801,17 @@ def create_initial_menus(db: Session) -> None:
             meta_icon="",
             parent_id=examples_id,
             sort=3,
+            keep_alive=True
+        ),
+        Menu(
+            menu_id=generate_unique_id("menu"),
+            name="TablesTree",
+            path="tables/tree",
+            component="/examples/tables/tree",
+            meta_title="menus.examples.tablesTree",
+            meta_icon="",
+            parent_id=examples_id,
+            sort=4,
             keep_alive=True
         )
     ]

@@ -455,6 +455,20 @@ def create_initial_menus(db: Session) -> None:
     # 创建菜单数据
     # 基于前端 asyncRoutes.ts 创建菜单数据
     dashboard_id = generate_unique_id("menu")
+        # 监控菜单
+    monitor_menu = Menu(
+        menu_id=generate_unique_id("menu"),
+        name="Monitor",
+        path="/monitor",
+        component="/monitor",
+        meta_title="menus.monitor.title",
+        meta_icon="&#xe8ba;",
+        sort=1,
+        keep_alive=True,
+        is_full_page=True
+    )
+    db.add(monitor_menu)
+    
     
     # 创建Dashboard主菜单
     dashboard = Menu(
@@ -464,7 +478,7 @@ def create_initial_menus(db: Session) -> None:
         component="/index/index",
         meta_title="menus.dashboard.title",
         meta_icon="&#xe721;",
-        sort=1,
+        sort=2,
         keep_alive=True
     )
     db.add(dashboard)
@@ -507,20 +521,6 @@ def create_initial_menus(db: Session) -> None:
     ]
     for menu in dashboard_children:
         db.add(menu)
-    
-    # 监控菜单
-    monitor_menu = Menu(
-        menu_id=generate_unique_id("menu"),
-        name="Monitor",
-        path="/monitor",
-        component="/monitor",
-        meta_title="menus.monitor.title",
-        meta_icon="&#xe8ba;",
-        sort=2,
-        keep_alive=True,
-        is_full_page=True
-    )
-    db.add(monitor_menu)
     
     # 模板菜单
     template_id = generate_unique_id("menu")

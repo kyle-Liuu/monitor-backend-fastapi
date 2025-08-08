@@ -450,7 +450,7 @@ def main():
     
     # 运行检测
     try:
-        detector.run(duration=60)  # 运行60秒
+        detector.run(duration=600)  # 运行600秒
     except Exception as e:
         logger.error(f"检测失败: {e}")
 
